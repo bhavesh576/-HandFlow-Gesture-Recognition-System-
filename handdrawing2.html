@@ -3,31 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AirGesture Pro - Next-Gen Hand Interaction Suite</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <title>NeuralCanvas - Dual Hand Writing</title>
     <style>
-        :root {
-            --primary-color: #14b8a6;
-            --secondary-color: #8b5cf6;
-            --accent-color: #06b6d4;
-            --warning-color: #eab308;
-            --success-color: #10b981;
-            --error-color: #ef4444;
-            --bg-primary: #121212;
-            --bg-secondary: #1e1e2f;
-            --bg-tertiary: #2a2a47;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a1a1aa;
-            --text-accent: #60a5fa;
-            --border-color: #3c3c5a;
-            --border-accent: #4c4c6d;
-            --shadow-color: rgba(20, 184, 166, 0.2);
-            --shadow-dark: rgba(0, 0, 0, 0.6);
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -35,1146 +12,980 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-            line-height: 1.6;
-            background-image: 
-                radial-gradient(circle at 25% 25%, #1e1e2f 0%, transparent 50%),
-                radial-gradient(circle at 75% 75%, #2a2a47 0%, transparent 50%);
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
         }
 
-        .header {
-            background: rgba(30, 30, 47, 0.95);
-            backdrop-filter: blur(15px);
-            padding: 1.25rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
+        /* Full Screen Black Drawing Canvas */
+        #drawingCanvas {
+            position: fixed;
             top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 20px var(--shadow-dark);
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            cursor: crosshair;
+            z-index: 1;
         }
 
-        .header-content {
+        /* Draggable Webcam Container */
+        .webcam-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            height: 225px;
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.3);
+            cursor: move;
+            z-index: 20;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .webcam-container:hover {
+            border-color: #00ff88;
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+            transform: scale(1.02);
+        }
+
+        .webcam-container.dragging {
+            cursor: grabbing;
+            transform: scale(1.05);
+            box-shadow: 0 12px 40px rgba(0, 255, 255, 0.6);
+            z-index: 30;
+        }
+
+        /* Webcam Header for Dragging */
+        .webcam-header {
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 136, 0.2));
+            border-radius: 13px 13px 0 0;
+            padding: 8px 15px;
+            font-size: 12px;
+            color: #00ffff;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1400px;
-            margin: 0 auto;
+            cursor: grab;
+            font-weight: bold;
         }
 
-        .logo {
+        .webcam-header:active {
+            cursor: grabbing;
+        }
+
+        .webcam-title {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--text-primary);
+            gap: 8px;
         }
 
-        .logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            box-shadow: 0 8px 20px var(--shadow-color);
+        .drag-indicator {
+            color: #00ff88;
+            font-size: 10px;
         }
 
-        .logo-text {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1.25rem;
-            background: var(--bg-secondary);
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--success-color);
-            animation: pulse 2s infinite;
-            box-shadow: 0 0 10px var(--success-color);
-        }
-
-        .fps-counter {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            color: white;
-            padding: 0.75rem 1.25rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            box-shadow: 0 4px 15px var(--shadow-color);
-        }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2.5rem;
-        }
-
-        /* Optimized Three Equal Components Layout */
-        .workspace {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 2.5rem;
-            margin-bottom: 3rem;
-        }
-
-        /* Enhanced Component Containers */
-        .section-container {
-            background: var(--bg-secondary);
-            border-radius: 24px;
-            padding: 2rem;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 20px 40px var(--shadow-dark), 0 0 20px var(--shadow-color);
-            display: flex;
-            flex-direction: column;
-            height: 420px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .section-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--warning-color));
-            opacity: 0.8;
-        }
-
-        .section-container:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 25px 50px var(--shadow-dark), 0 0 30px var(--shadow-color);
-        }
-
-        .section-title {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            color: var(--text-accent);
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            flex-shrink: 0;
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .media-wrapper {
-            position: relative;
+        /* Small Video Window */
+        #videoElement {
+            width: 100%;
+            height: calc(100% - 32px);
+            transform: scaleX(-1);
+            border-radius: 0 0 13px 13px;
             background: #000;
-            border-radius: 16px;
-            overflow: hidden;
-            flex: 1;
-            min-height: 0;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
-        .webcam-wrapper {
-            border: 3px solid var(--primary-color);
-            box-shadow: 0 0 20px var(--primary-color);
-        }
-
-        .detection-wrapper {
-            border: 3px solid var(--secondary-color);
-            box-shadow: 0 0 20px var(--secondary-color);
-        }
-
-        .blackboard-wrapper {
-            background: #0d0d0d;
-            border: 3px solid var(--warning-color);
-            box-shadow: 0 0 20px var(--warning-color);
-        }
-
-        video, canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .drawing-canvas {
-            width: 100%;
-            height: 100%;
-            background: #0d0d0d;
-            cursor: crosshair;
-        }
-
-        .overlay {
+        /* Hand Tracking Overlay */
+        #handCanvas {
             position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(0, 0, 0, 0.85);
-            color: var(--text-primary);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            font-family: 'JetBrains Mono', monospace;
-            border: 1px solid var(--border-color);
-        }
-
-        .status-overlay {
-            position: absolute;
-            bottom: 12px;
-            right: 12px;
-            background: rgba(0, 0, 0, 0.85);
-            color: var(--primary-color);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            border: 1px solid var(--primary-color);
-        }
-
-        /* Enhanced Controls Section */
-        .controls-section {
-            background: var(--bg-secondary);
-            border-radius: 24px;
-            padding: 2.5rem;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 20px 40px var(--shadow-dark), 0 0 20px var(--shadow-color);
-            margin-top: 2rem;
-        }
-
-        .controls-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
+            top: 32px;
             left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-            opacity: 0.8;
+            width: 100%;
+            height: calc(100% - 32px);
+            pointer-events: none;
+            border-radius: 0 0 13px 13px;
         }
 
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-        }
-
-        .control-group {
-            background: var(--bg-tertiary);
-            border-radius: 16px;
-            padding: 1.75rem;
-            border: 1px solid var(--border-accent);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .group-title {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: var(--text-accent);
+        /* Color Palette */
+        .color-palette {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            z-index: 30;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
-        .button-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-            gap: 0.875rem;
-            margin-bottom: 1.25rem;
+        .color-swatch {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .color-swatch.active {
+            border-color: white;
+            transform: scale(1.3);
+            box-shadow: 0 0 20px white;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            z-index: 30;
+            min-width: 220px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-title {
+            font-size: 14px;
+            color: #00ffff;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
         }
 
         .btn {
+            width: 100%;
+            padding: 10px 15px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-clear {
+            background: #ff4757;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #ff3742;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+        }
+
+        .brush-control {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 1rem 1.25rem;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            gap: 10px;
+            margin: 15px 0;
             color: white;
-            box-shadow: 0 4px 15px var(--shadow-color);
+            font-size: 12px;
         }
 
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-accent);
+        .brush-slider {
+            flex: 1;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 8px 25px var(--shadow-color);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Hand Status Grid */
-        .hand-status-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        .hand-status {
-            background: var(--bg-primary);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1rem;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .hand-status.active {
-            border-color: var(--success-color);
-            background: rgba(16, 185, 129, 0.1);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-        }
-
-        .hand-title {
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--text-accent);
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-        }
-
-        .hand-gesture {
-            font-size: 2rem;
-            margin: 0.5rem 0;
-        }
-
-        .hand-action {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Enhanced Color Palette */
-        .color-palette {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-        }
-
-        .color-option {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+        .brush-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #00ffff;
+            border-radius: 50%;
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-            justify-self: center;
-            position: relative;
+            box-shadow: 0 0 10px #00ffff;
         }
 
-        .color-option::before {
-            content: '';
+        .size-display {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .gesture-info {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        .gesture-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        .gesture-icon {
+            font-size: 16px;
+            width: 20px;
+        }
+
+        /* NEW: Dual Hand Features */
+        .dual-hand-info {
+            background: rgba(255, 0, 128, 0.1);
+            border: 1px solid rgba(255, 0, 128, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 10px;
+        }
+
+        .hand-color-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .hand-color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* Status */
+        .status {
+            position: fixed;
+            bottom: 120px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #00ff88;
+            z-index: 25;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        /* Clear Animation */
+        .clear-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ff4757;
+            z-index: 100;
+            animation: clearPulse 1s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes clearPulse {
+            0% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(0.5); 
+            }
+            50% { 
+                opacity: 1; 
+                transform: translate(-50%, -50%) scale(1.2); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: translate(-50%, -50%) scale(1.5); 
+            }
+        }
+
+        /* Position Indicators */
+        .position-info {
             position: absolute;
-            inset: -4px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            z-index: -1;
+            top: -25px;
+            left: 0;
+            font-size: 10px;
+            color: #00ffff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 3px 8px;
+            border-radius: 5px;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
-        .color-option:hover {
-            transform: scale(1.15);
-        }
-
-        .color-option.active {
-            transform: scale(1.2);
-            box-shadow: 0 0 15px var(--primary-color);
-        }
-
-        .color-option.active::before {
+        .webcam-container.dragging .position-info {
             opacity: 1;
-        }
-
-        /* Enhanced Settings */
-        .setting-item {
-            margin-bottom: 1.25rem;
-        }
-
-        .setting-label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: var(--text-accent);
-            font-size: 0.875rem;
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .slider {
-            width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            background: var(--bg-primary);
-            outline: none;
-            appearance: none;
-            cursor: pointer;
-            border: 1px solid var(--border-color);
-        }
-
-        .slider::-webkit-slider-thumb {
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            cursor: pointer;
-            box-shadow: 0 2px 10px var(--shadow-color);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 15px var(--primary-color); }
-            50% { box-shadow: 0 0 30px var(--primary-color); }
-        }
-
-        .drawing-active {
-            animation: glow 2s infinite;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 1200px) {
-            .workspace {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
-            
-            .section-container {
-                height: 380px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .main-container {
-                padding: 1.5rem;
-            }
-            
-            .section-container {
-                height: 350px;
-                padding: 1.5rem;
-            }
-            
-            .controls-grid {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
         }
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon">🚀</div>
-                <span class="logo-text">AirGesture Pro</span>
+    <!-- Full Screen Black Drawing Canvas -->
+    <canvas id="drawingCanvas"></canvas>
+
+    <!-- Draggable Webcam Container -->
+    <div class="webcam-container" id="webcamContainer">
+        <div class="webcam-header" id="webcamHeader">
+            <div class="webcam-title">
+                <span>📹 Dual Hand Camera</span>
+                <span class="drag-indicator">⋮⋮</span>
             </div>
-            <div class="status-bar">
-                <div class="status-indicator">
-                    <div class="status-dot"></div>
-                    <span id="connectionStatus">Initializing Neural Network...</span>
-                </div>
-                <div class="fps-counter">FPS: <span id="fpsCounter">0</span></div>
-            </div>
+            <div style="font-size: 10px; color: #00ff88;">Both Hands</div>
         </div>
-    </header>
+        
+        <video id="videoElement" autoplay muted playsinline></video>
+        <canvas id="handCanvas"></canvas>
+        
+        <!-- Position Info -->
+        <div class="position-info" id="positionInfo">X: 0, Y: 0</div>
+    </div>
 
-    <div class="main-container">
-        <!-- Three Optimized Equal Components -->
-        <div class="workspace">
-            <!-- Webcam Section -->
-            <div class="section-container">
-                <h3 class="section-title">📹 Camera Feed</h3>
-                <div class="content-area">
-                    <div class="media-wrapper webcam-wrapper">
-                        <video id="webcam" autoplay playsinline muted></video>
-                        <div class="overlay">LIVE INPUT</div>
-                        <div class="status-overlay" id="cameraStatus">READY</div>
-                    </div>
-                </div>
-            </div>
+    <!-- Status -->
+    <div class="status" id="status">Ready - Dual hand writing! Point both fingers to write simultaneously!</div>
 
-            <!-- Hand Detection Section -->
-            <div class="section-container">
-                <h3 class="section-title">🤖 AI Detection</h3>
-                <div class="content-area">
-                    <div class="media-wrapper detection-wrapper">
-                        <canvas id="handCanvas"></canvas>
-                        <div class="overlay">NEURAL TRACK</div>
-                        <div class="status-overlay" id="detectionStatus">0 HANDS</div>
-                    </div>
-                </div>
-            </div>
+    <!-- Color Palette -->
+    <div class="color-palette">
+        <div class="color-swatch active" data-color="white" style="background: white;"></div>
+        <div class="color-swatch" data-color="red" style="background: red;"></div>
+        <div class="color-swatch" data-color="lime" style="background: lime;"></div>
+        <div class="color-swatch" data-color="cyan" style="background: cyan;"></div>
+        <div class="color-swatch" data-color="yellow" style="background: yellow;"></div>
+        <div class="color-swatch" data-color="magenta" style="background: magenta;"></div>
+        <div class="color-swatch" data-color="orange" style="background: orange;"></div>
+    </div>
 
-            <!-- BlackBoard Section -->
-            <div class="section-container">
-                <h3 class="section-title">🎨 Canvas Board</h3>
-                <div class="content-area">
-                    <div class="media-wrapper blackboard-wrapper">
-                        <canvas class="drawing-canvas" id="drawingCanvas" width="800" height="600"></canvas>
-                        <div class="overlay">DRAW ZONE</div>
-                        <div class="status-overlay" id="drawingStatus">POINT TO DRAW</div>
-                    </div>
-                </div>
-            </div>
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <div class="control-title">Dual Hand Controls</div>
+        
+        <button class="btn btn-clear" id="clearBtn">🗑️ Clear Board</button>
+        
+        <div class="brush-control">
+            <span>Size:</span>
+            <input type="range" class="brush-slider" id="sizeSlider" min="2" max="20" value="8">
+            <span class="size-display" id="sizeDisplay">8px</span>
         </div>
 
-        <!-- Enhanced Controls Section -->
-        <div class="controls-section">
-            <h2 class="section-title">🎛️ Mission Control Center</h2>
-            
-            <div class="controls-grid">
-                <!-- System Controls -->
-                <div class="control-group">
-                    <h3 class="group-title">⚡ System Core</h3>
-                    <div class="button-grid">
-                        <button class="btn btn-primary" id="startBtn">Launch</button>
-                        <button class="btn btn-secondary" id="stopBtn" disabled>Halt</button>
-                        <button class="btn btn-secondary" id="calibrateBtn">Calibrate</button>
-                        <button class="btn btn-secondary" id="resetBtn">Reset</button>
-                    </div>
-                </div>
-
-                <!-- Drawing Controls -->
-                <div class="control-group">
-                    <h3 class="group-title">🎨 Art Studio</h3>
-                    <div class="button-grid">
-                        <button class="btn btn-secondary" id="clearBtn">Clear</button>
-                        <button class="btn btn-secondary" id="undoBtn">Undo</button>
-                        <button class="btn btn-secondary" id="saveBtn">Save</button>
-                        <button class="btn btn-secondary" id="downloadBtn">Export</button>
-                    </div>
-                    
-                    <div class="color-palette">
-                        <div class="color-option active" style="background: #ffffff" data-color="#ffffff" title="White"></div>
-                        <div class="color-option" style="background: #14b8a6" data-color="#14b8a6" title="Teal"></div>
-                        <div class="color-option" style="background: #eab308" data-color="#eab308" title="Yellow"></div>
-                        <div class="color-option" style="background: #f97316" data-color="#f97316" title="Orange"></div>
-                        <div class="color-option" style="background: #ec4899" data-color="#ec4899" title="Pink"></div>
-                        <div class="color-option" style="background: #06b6d4" data-color="#06b6d4" title="Cyan"></div>
-                        <div class="color-option" style="background: #8b5cf6" data-color="#8b5cf6" title="Purple"></div>
-                        <div class="color-option" style="background: #ef4444" data-color="#ef4444" title="Red"></div>
-                    </div>
-                </div>
-
-                <!-- Hand Status -->
-                <div class="control-group">
-                    <h3 class="group-title">👋 Hand Matrix</h3>
-                    <div class="hand-status-grid">
-                        <div class="hand-status" id="leftHandStatus">
-                            <div class="hand-title">Left Hand</div>
-                            <div class="hand-gesture" id="leftHandGesture">❌</div>
-                            <div class="hand-action" id="leftHandAction">OFFLINE</div>
-                        </div>
-                        <div class="hand-status" id="rightHandStatus">
-                            <div class="hand-title">Right Hand</div>
-                            <div class="hand-gesture" id="rightHandGesture">❌</div>
-                            <div class="hand-action" id="rightHandAction">OFFLINE</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings -->
-                <div class="control-group">
-                    <h3 class="group-title">⚙️ Neural Config</h3>
-                    <div class="setting-item">
-                        <label class="setting-label">Detection Precision</label>
-                        <input type="range" class="slider" id="sensitivitySlider" min="0.1" max="1" step="0.1" value="0.8">
-                    </div>
-                    <div class="setting-item">
-                        <label class="setting-label">Brush Intensity</label>
-                        <input type="range" class="slider" id="brushSizeSlider" min="3" max="25" value="8">
-                    </div>
-                    <div class="setting-item">
-                        <label class="setting-label">Motion Smoothing</label>
-                        <input type="range" class="slider" id="smoothingSlider" min="1" max="10" value="5">
-                    </div>
-                </div>
+        <!-- NEW: Dual Hand Info -->
+        <div class="dual-hand-info">
+            <div style="color: #ff0080; font-weight: bold; margin-bottom: 8px;">✋✋ Dual Hand Writing:</div>
+            <div class="hand-color-info">
+                <span><span class="hand-color-dot" style="background: #00ffff;"></span>Right Hand</span>
+                <span><span class="hand-color-dot" style="background: #ff0080;"></span>Left Hand</span>
             </div>
+            <div style="margin-top: 5px;">Both hands can write simultaneously!</div>
+        </div>
+
+        <div class="gesture-info">
+            <div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">✋ Controls:</div>
+            <div class="gesture-item">
+                <span class="gesture-icon">🖱️</span>
+                <span>Drag camera anywhere</span>
+            </div>
+            <div class="gesture-item">
+                <span class="gesture-icon">👆👆</span>
+                <span>Point both fingers = Dual write</span>
+            </div>
+            <div class="gesture-item">
+                <span class="gesture-icon">👆</span>
+                <span>Point one finger = Single write</span>
+            </div>
+            <div class="gesture-item">
+                <span class="gesture-icon">🖐️</span>
+                <span>Open palm = Clear board</span>
+            </div>
+        </div>
+
+        <div style="font-size: 10px; color: #aaa; margin-top: 15px; line-height: 1.3;">
+            ✅ Dual hand writing active!<br>
+            🖱️ Draggable webcam!<br>
+            🔄 Palm rotation supported<br>
+            👥 Two printer writing mode
         </div>
     </div>
 
-    <!-- TensorFlow.js Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7/dist/handpose.min.js"></script>
+    <!-- MediaPipe Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 
     <script>
-        class AirGesturePro {
+        class DualHandNeuralCanvas {
             constructor() {
-                this.model = null;
-                this.video = document.getElementById('webcam');
+                console.log('🚀 Starting Dual Hand NeuralCanvas...');
+                
+                // DOM Elements
+                this.videoElement = document.getElementById('videoElement');
                 this.handCanvas = document.getElementById('handCanvas');
                 this.drawingCanvas = document.getElementById('drawingCanvas');
-                this.handCtx = this.handCanvas.getContext('2d');
-                this.drawCtx = this.drawingCanvas.getContext('2d');
-                
-                // State
-                this.isRunning = false;
-                this.isDrawing = false;
-                this.currentColor = '#ffffff';
+                this.status = document.getElementById('status');
+                this.webcamContainer = document.getElementById('webcamContainer');
+                this.webcamHeader = document.getElementById('webcamHeader');
+                this.positionInfo = document.getElementById('positionInfo');
+
+                // MediaPipe
+                this.hands = null;
+                this.camera = null;
+
+                // NEW: Dual Hand Drawing State
+                this.leftHand = {
+                    drawing: false,
+                    lastPoint: null,
+                    lastPositions: [],
+                    noDetectionFrames: 0,
+                    color: '#ff0080' // Pink for left hand
+                };
+
+                this.rightHand = {
+                    drawing: false,
+                    lastPoint: null,
+                    lastPositions: [],
+                    noDetectionFrames: 0,
+                    color: '#00ffff' // Cyan for right hand
+                };
+
+                // Shared settings
+                this.currentColor = 'white'; // Default color (can be overridden per hand)
                 this.brushSize = 8;
-                this.sensitivity = 0.8;
-                this.smoothing = 5;
-                this.lastX = 0;
-                this.lastY = 0;
-                
-                // Hand tracking
-                this.leftHand = { detected: false, gesture: 'unknown' };
-                this.rightHand = { detected: false, gesture: 'unknown' };
-                
-                // Performance
-                this.frameCount = 0;
-                this.lastFrameTime = Date.now();
-                
-                // Drawing history
-                this.drawingHistory = [];
-                
+                this.maxNoDetectionFrames = 8;
+                this.minMovementThreshold = 5;
+
+                // Gesture Clear Control (works with either hand)
+                this.clearGestureFrames = 0;
+                this.clearGestureThreshold = 15;
+                this.lastClearTime = 0;
+                this.clearCooldown = 2000;
+
+                // Dragging State
+                this.isDragging = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.webcamStartX = 0;
+                this.webcamStartY = 0;
+
                 this.init();
             }
 
             async init() {
                 try {
-                    document.getElementById('connectionStatus').textContent = 'Initializing TensorFlow.js...';
-                    await this.loadModel();
+                    this.setupCanvases();
+                    this.setupControls();
+                    this.setupDragging();
                     
-                    document.getElementById('connectionStatus').textContent = 'Accessing Camera Stream...';
-                    await this.setupCamera();
+                    this.status.textContent = 'Initializing dual hand camera...';
+                    await this.initCamera();
                     
-                    this.setupCanvas();
-                    this.setupEventListeners();
+                    this.status.textContent = 'Loading dual hand detection...';
+                    await this.initMediaPipe();
                     
-                    document.getElementById('connectionStatus').textContent = 'AirGesture Pro Ready!';
+                    this.status.textContent = 'Ready - Dual hand writing! Point both fingers to write simultaneously!';
                     
                 } catch (error) {
-                    console.error('Initialization error:', error);
-                    document.getElementById('connectionStatus').textContent = 'ERROR: ' + error.message;
+                    console.error('❌ Dual hand initialization failed:', error);
+                    this.status.textContent = 'Error: ' + error.message;
                 }
             }
 
-            async loadModel() {
-                this.model = await handpose.load({
-                    detectionConfidence: this.sensitivity,
-                    iouThreshold: 0.3,
-                    scoreThreshold: 0.75
-                });
-            }
-
-            async setupCamera() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            width: { ideal: 640 },
-                            height: { ideal: 480 },
-                            facingMode: 'user'
-                        }
-                    });
-                    
-                    this.video.srcObject = stream;
-                    
-                    return new Promise((resolve) => {
-                        this.video.onloadedmetadata = () => {
-                            this.handCanvas.width = this.video.videoWidth;
-                            this.handCanvas.height = this.video.videoHeight;
-                            resolve();
-                        };
-                    });
-                } catch (error) {
-                    throw new Error('Camera access denied. Please allow camera permissions.');
-                }
-            }
-
-            setupCanvas() {
-                // Set blackboard background
-                this.drawCtx.fillStyle = '#0d0d0d';
-                this.drawCtx.fillRect(0, 0, this.drawingCanvas.width, this.drawingCanvas.height);
-                
-                // Set drawing properties
+            setupCanvases() {
+                // Full screen black drawing canvas
+                this.drawingCanvas.width = window.innerWidth;
+                this.drawingCanvas.height = window.innerHeight;
+                this.drawCtx = this.drawingCanvas.getContext('2d');
                 this.drawCtx.lineCap = 'round';
                 this.drawCtx.lineJoin = 'round';
-                
-                this.saveDrawingState();
+
+                // Small hand tracking canvas
+                this.handCanvas.width = 296;
+                this.handCanvas.height = 193;
+                this.handCtx = this.handCanvas.getContext('2d');
+                this.handCtx.lineCap = 'round';
+                this.handCtx.lineJoin = 'round';
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.drawingCanvas.width = window.innerWidth;
+                    this.drawingCanvas.height = window.innerHeight;
+                    this.drawCtx.lineCap = 'round';
+                    this.drawCtx.lineJoin = 'round';
+                    this.keepWebcamInBounds();
+                });
+
+                console.log('✅ Dual hand canvases setup');
             }
 
-            setupEventListeners() {
-                // Main controls
-                document.getElementById('startBtn').addEventListener('click', () => this.start());
-                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
-                document.getElementById('calibrateBtn').addEventListener('click', () => this.calibrate());
-                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+            setupDragging() {
+                this.webcamHeader.addEventListener('mousedown', (e) => this.startDrag(e));
+                document.addEventListener('mousemove', (e) => this.drag(e));
+                document.addEventListener('mouseup', () => this.stopDrag());
 
-                // Drawing controls
-                document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
-                document.getElementById('undoBtn').addEventListener('click', () => this.undo());
-                document.getElementById('saveBtn').addEventListener('click', () => this.saveCanvas());
-                document.getElementById('downloadBtn').addEventListener('click', () => this.downloadCanvas());
-
-                // Color palette
-                document.querySelectorAll('.color-option').forEach(option => {
-                    option.addEventListener('click', (e) => {
-                        this.selectColor(e.target.dataset.color);
-                    });
+                this.webcamHeader.addEventListener('touchstart', (e) => this.startDrag(e.touches[0]));
+                document.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    this.drag(e.touches[0]);
                 });
+                document.addEventListener('touchend', () => this.stopDrag());
 
-                // Settings
-                document.getElementById('sensitivitySlider').addEventListener('input', (e) => {
-                    this.sensitivity = parseFloat(e.target.value);
-                });
+                this.webcamContainer.addEventListener('dragstart', (e) => e.preventDefault());
+
+                console.log('✅ Dragging setup');
+            }
+
+            startDrag(e) {
+                this.isDragging = true;
+                this.webcamContainer.classList.add('dragging');
                 
-                document.getElementById('brushSizeSlider').addEventListener('input', (e) => {
+                this.dragStartX = e.clientX;
+                this.dragStartY = e.clientY;
+                
+                const rect = this.webcamContainer.getBoundingClientRect();
+                this.webcamStartX = rect.left;
+                this.webcamStartY = rect.top;
+                
+                this.updatePositionInfo(this.webcamStartX, this.webcamStartY);
+                console.log('🖱️ Started dragging webcam');
+            }
+
+            drag(e) {
+                if (!this.isDragging) return;
+
+                const deltaX = e.clientX - this.dragStartX;
+                const deltaY = e.clientY - this.dragStartY;
+                
+                let newX = this.webcamStartX + deltaX;
+                let newY = this.webcamStartY + deltaY;
+                
+                const containerWidth = this.webcamContainer.offsetWidth;
+                const containerHeight = this.webcamContainer.offsetHeight;
+                
+                newX = Math.max(0, Math.min(window.innerWidth - containerWidth, newX));
+                newY = Math.max(0, Math.min(window.innerHeight - containerHeight, newY));
+                
+                this.webcamContainer.style.left = `${newX}px`;
+                this.webcamContainer.style.top = `${newY}px`;
+                
+                this.updatePositionInfo(newX, newY);
+            }
+
+            stopDrag() {
+                if (!this.isDragging) return;
+                
+                this.isDragging = false;
+                this.webcamContainer.classList.remove('dragging');
+                console.log('✅ Stopped dragging webcam');
+            }
+
+            updatePositionInfo(x, y) {
+                this.positionInfo.textContent = `X: ${Math.round(x)}, Y: ${Math.round(y)}`;
+            }
+
+            keepWebcamInBounds() {
+                const rect = this.webcamContainer.getBoundingClientRect();
+                const containerWidth = this.webcamContainer.offsetWidth;
+                const containerHeight = this.webcamContainer.offsetHeight;
+                
+                let newX = Math.max(0, Math.min(window.innerWidth - containerWidth, rect.left));
+                let newY = Math.max(0, Math.min(window.innerHeight - containerHeight, rect.top));
+                
+                this.webcamContainer.style.left = `${newX}px`;
+                this.webcamContainer.style.top = `${newY}px`;
+            }
+
+            setupControls() {
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearCanvasWithAnimation();
+                });
+
+                document.getElementById('sizeSlider').addEventListener('input', (e) => {
                     this.brushSize = parseInt(e.target.value);
+                    document.getElementById('sizeDisplay').textContent = `${this.brushSize}px`;
                 });
-                
-                document.getElementById('smoothingSlider').addEventListener('input', (e) => {
-                    this.smoothing = parseInt(e.target.value);
+
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', () => {
+                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                        swatch.classList.add('active');
+                        this.currentColor = swatch.dataset.color;
+                        console.log('🎨 Color changed to:', this.currentColor);
+                    });
                 });
+
+                console.log('✅ Controls setup');
             }
 
-            start() {
-                if (this.isRunning) return;
-                
-                this.isRunning = true;
-                document.getElementById('startBtn').disabled = true;
-                document.getElementById('stopBtn').disabled = false;
-                document.getElementById('connectionStatus').textContent = 'Neural Network ACTIVE';
-                document.getElementById('cameraStatus').textContent = 'STREAMING';
-                
-                this.detectHands();
+            async initCamera() {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }
+                });
+
+                this.videoElement.srcObject = stream;
+
+                await new Promise((resolve, reject) => {
+                    this.videoElement.onloadedmetadata = resolve;
+                    this.videoElement.onerror = reject;
+                    setTimeout(() => reject(new Error('Camera timeout')), 10000);
+                });
+
+                console.log('✅ Camera initialized');
             }
 
-            stop() {
-                this.isRunning = false;
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('stopBtn').disabled = true;
-                document.getElementById('connectionStatus').textContent = 'System HALTED';
-                document.getElementById('cameraStatus').textContent = 'OFFLINE';
-                document.getElementById('detectionStatus').textContent = '0 HANDS';
-                this.isDrawing = false;
-                this.updateHandStatus('left', false);
-                this.updateHandStatus('right', false);
-            }
+            async initMediaPipe() {
+                if (typeof Hands === 'undefined') {
+                    throw new Error('MediaPipe not loaded. Check internet.');
+                }
 
-            async detectHands() {
-                if (!this.isRunning) return;
+                this.hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
 
-                try {
-                    const predictions = await this.model.estimateHands(this.video, {
-                        flipHorizontal: true,
-                        maxNumHands: 2
+                // NEW: Enable detection of up to 2 hands for dual hand support
+                this.hands.setOptions({
+                    maxNumHands: 2, // CHANGED: Support 2 hands instead of 1
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.6,
+                    minTrackingConfidence: 0.5
+                });
+
+                this.hands.onResults(this.onDualHandResults.bind(this));
+
+                if (typeof Camera !== 'undefined') {
+                    this.camera = new Camera(this.videoElement, {
+                        onFrame: async () => {
+                            if (this.hands) {
+                                await this.hands.send({ image: this.videoElement });
+                            }
+                        },
+                        width: 640,
+                        height: 480
                     });
                     
-                    this.handCtx.clearRect(0, 0, this.handCanvas.width, this.handCanvas.height);
-                    
-                    // Update detection status
-                    document.getElementById('detectionStatus').textContent = `${predictions.length} HAND${predictions.length !== 1 ? 'S' : ''}`;
-                    
-                    // Reset hand states
-                    this.leftHand.detected = false;
-                    this.rightHand.detected = false;
-                    
-                    if (predictions.length > 0) {
-                        const classifiedHands = this.classifyHands(predictions);
-                        
-                        Object.entries(classifiedHands).forEach(([handType, hand]) => {
-                            if (hand) {
-                                this.drawHandLandmarks(hand.landmarks, handType);
-                                const gesture = this.recognizeGesture(hand.landmarks);
-                                this.handleDrawing(hand.landmarks, handType, gesture);
-                                this.handleGestures(gesture, handType);
-                                this.updateHandStatus(handType, true, gesture);
-                                
-                                if (handType === 'left') {
-                                    this.leftHand.detected = true;
-                                    this.leftHand.gesture = gesture;
-                                } else {
-                                    this.rightHand.detected = true;
-                                    this.rightHand.gesture = gesture;
-                                }
-                            }
-                        });
-                        
-                        document.getElementById('drawingStatus').textContent = 'TRACKING HANDS';
-                    } else {
-                        this.isDrawing = false;
-                        document.getElementById('drawingStatus').textContent = 'AWAITING INPUT';
-                    }
-                    
-                    // Update hand status for undetected hands
-                    if (!this.leftHand.detected) this.updateHandStatus('left', false);
-                    if (!this.rightHand.detected) this.updateHandStatus('right', false);
-                    
-                    this.updateFPS();
-                    
-                } catch (error) {
-                    console.error('Detection error:', error);
+                    await this.camera.start();
                 }
 
-                if (this.isRunning) {
-                    requestAnimationFrame(() => this.detectHands());
+                console.log('✅ Dual hand MediaPipe initialized');
+            }
+
+            // NEW: Enhanced onResults for dual hand processing
+            onDualHandResults(results) {
+                // Clear hand overlay
+                this.handCtx.clearRect(0, 0, this.handCanvas.width, this.handCanvas.height);
+
+                // Reset hand detection states
+                let leftHandDetected = false;
+                let rightHandDetected = false;
+                let anyHandShowingClear = false;
+
+                // Process each detected hand
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                        const landmarks = results.multiHandLandmarks[i];
+                        const handedness = results.multiHandedness[i];
+                        const isRightHand = handedness.label === 'Right';
+                        const handKey = isRightHand ? 'rightHand' : 'leftHand';
+                        const hand = this[handKey];
+
+                        // Update detection state
+                        if (isRightHand) {
+                            rightHandDetected = true;
+                        } else {
+                            leftHandDetected = true;
+                        }
+
+                        // Reset no detection counter for this hand
+                        hand.noDetectionFrames = 0;
+
+                        // Draw hand skeleton
+                        this.drawDualHandSkeleton(landmarks, isRightHand, hand.drawing);
+
+                        // Check for clear gesture on this hand
+                        const isClearGesture = this.detectClearGesture(landmarks);
+                        if (isClearGesture) {
+                            anyHandShowingClear = true;
+                        }
+
+                        // Check if this hand should draw
+                        const shouldDraw = this.shouldContinueDrawing(landmarks);
+                        
+                        if (shouldDraw && !isClearGesture) {
+                            const indexTip = landmarks[8];
+                            const drawingPoint = this.convertToDrawingCoords(indexTip);
+                            this.handleDualHandDrawing(drawingPoint, hand, isRightHand);
+                        } else {
+                            this.stopDrawingHand(hand);
+                        }
+                    }
+                } else {
+                    // No hands detected - increment no detection counters
+                    this.leftHand.noDetectionFrames++;
+                    this.rightHand.noDetectionFrames++;
+                }
+
+                // Handle hands that weren't detected in this frame
+                if (!leftHandDetected) {
+                    if (this.leftHand.noDetectionFrames > this.maxNoDetectionFrames) {
+                        this.stopDrawingHand(this.leftHand);
+                    }
+                }
+
+                if (!rightHandDetected) {
+                    if (this.rightHand.noDetectionFrames > this.maxNoDetectionFrames) {
+                        this.stopDrawingHand(this.rightHand);
+                    }
+                }
+
+                // Handle clear gesture
+                if (anyHandShowingClear) {
+                    this.clearGestureFrames++;
+                    this.stopDrawingHand(this.leftHand);
+                    this.stopDrawingHand(this.rightHand);
+                    
+                    if (this.clearGestureFrames >= this.clearGestureThreshold) {
+                        const now = Date.now();
+                        if (now - this.lastClearTime > this.clearCooldown) {
+                            this.clearCanvasWithAnimation();
+                            this.lastClearTime = now;
+                            this.clearGestureFrames = 0;
+                        }
+                    }
+                    
+                    const progress = Math.min(100, (this.clearGestureFrames / this.clearGestureThreshold) * 100);
+                    this.status.textContent = `Hold open palm to clear... ${Math.round(progress)}%`;
+                    
+                } else {
+                    this.clearGestureFrames = 0;
+                    this.updateDualHandStatus(leftHandDetected, rightHandDetected);
+                }
+
+                console.log(`👥 Dual hands: L:${leftHandDetected} R:${rightHandDetected} Drawing: L:${this.leftHand.drawing} R:${this.rightHand.drawing}`);
+            }
+
+            // NEW: Handle drawing for dual hands
+            handleDualHandDrawing(point, hand, isRightHand) {
+                // Add to position buffer for smoothing
+                hand.lastPositions.push(point);
+                if (hand.lastPositions.length > 5) {
+                    hand.lastPositions.shift();
+                }
+
+                if (hand.lastPositions.length >= 2) {
+                    const smoothPoint = this.smoothPosition(hand.lastPositions);
+                    
+                    if (hand.drawing && hand.lastPoint) {
+                        const movement = this.calculateDistance(smoothPoint, hand.lastPoint);
+                        
+                        if (movement > this.minMovementThreshold) {
+                            // Draw with hand-specific color or current selected color
+                            const drawColor = this.currentColor === 'white' ? hand.color : this.currentColor;
+                            
+                            this.drawCtx.strokeStyle = drawColor;
+                            this.drawCtx.lineWidth = this.brushSize;
+                            this.drawCtx.globalAlpha = 1.0;
+
+                            this.drawCtx.beginPath();
+                            this.drawCtx.moveTo(hand.lastPoint.x, hand.lastPoint.y);
+                            this.drawCtx.lineTo(smoothPoint.x, smoothPoint.y);
+                            this.drawCtx.stroke();
+                        }
+                    }
+
+                    hand.drawing = true;
+                    hand.lastPoint = smoothPoint;
+                } else {
+                    hand.drawing = true;
+                    hand.lastPoint = point;
                 }
             }
 
-            classifyHands(predictions) {
-                const classified = { left: null, right: null };
-                
-                if (predictions.length === 1) {
-                    const hand = predictions[0];
-                    const centerX = hand.landmarks.reduce((sum, point) => sum + point[0], 0) / hand.landmarks.length;
-                    
-                    if (centerX > this.handCanvas.width / 2) {
-                        classified.left = hand;
-                    } else {
-                        classified.right = hand;
-                    }
-                } else if (predictions.length === 2) {
-                    const hand1 = predictions[0];
-                    const hand2 = predictions[1];
-                    
-                    const centerX1 = hand1.landmarks.reduce((sum, point) => sum + point[0], 0) / hand1.landmarks.length;
-                    const centerX2 = hand2.landmarks.reduce((sum, point) => sum + point[0], 0) / hand2.landmarks.length;
-                    
-                    if (centerX1 > centerX2) {
-                        classified.left = hand1;
-                        classified.right = hand2;
-                    } else {
-                        classified.left = hand2;
-                        classified.right = hand1;
-                    }
-                }
-                
-                return classified;
+            // NEW: Stop drawing for specific hand
+            stopDrawingHand(hand) {
+                hand.drawing = false;
+                hand.lastPoint = null;
+                hand.lastPositions = [];
             }
 
-            drawHandLandmarks(landmarks, handType) {
+            // NEW: Update status for dual hands
+            updateDualHandStatus(leftDetected, rightDetected) {
+                const leftDrawing = this.leftHand.drawing;
+                const rightDrawing = this.rightHand.drawing;
+                
+                if (leftDrawing && rightDrawing) {
+                    this.status.textContent = '✍️✍️ Both hands writing simultaneously!';
+                } else if (leftDrawing) {
+                    this.status.textContent = '✍️ Left hand writing...';
+                } else if (rightDrawing) {
+                    this.status.textContent = '✍️ Right hand writing...';
+                } else if (leftDetected || rightDetected) {
+                    this.status.textContent = 'Point fingers to write with dual hands!';
+                } else {
+                    this.status.textContent = 'Show hands to start dual writing!';
+                }
+            }
+
+            // NEW: Enhanced hand skeleton drawing for dual hands
+            drawDualHandSkeleton(landmarks, isRightHand, isDrawing) {
+                // Use different colors for left and right hands
+                const handColor = isRightHand ? '#00ffff' : '#ff0080';
+                
+                this.handCtx.strokeStyle = handColor;
+                this.handCtx.lineWidth = 2;
+                this.handCtx.fillStyle = handColor;
+
                 const connections = [
-                    [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
-                    [0, 5], [5, 6], [6, 7], [7, 8], // Index
-                    [0, 9], [9, 10], [10, 11], [11, 12], // Middle
-                    [0, 13], [13, 14], [14, 15], [15, 16], // Ring
-                    [0, 17], [17, 18], [18, 19], [19, 20] // Pinky
+                    [0,1],[1,2],[2,3],[3,4],
+                    [0,5],[5,6],[6,7],[7,8],
+                    [0,9],[9,10],[10,11],[11,12],
+                    [0,13],[13,14],[14,15],[15,16],
+                    [0,17],[17,18],[18,19],[19,20],
+                    [5,9],[9,13],[13,17]
                 ];
 
-                const handColor = handType === 'left' ? '#14b8a6' : '#8b5cf6';
-                this.handCtx.strokeStyle = handColor;
-                this.handCtx.lineWidth = 3;
-                this.handCtx.lineCap = 'round';
-                this.handCtx.shadowColor = handColor;
-                this.handCtx.shadowBlur = 5;
-                
                 // Draw connections
+                this.handCtx.beginPath();
                 connections.forEach(([start, end]) => {
-                    this.handCtx.beginPath();
-                    this.handCtx.moveTo(landmarks[start][0], landmarks[start][1]);
-                    this.handCtx.lineTo(landmarks[end][0], landmarks[end][1]);
-                    this.handCtx.stroke();
+                    const startPoint = this.landmarkToPixel(landmarks[start]);
+                    const endPoint = this.landmarkToPixel(landmarks[end]);
+                    
+                    this.handCtx.moveTo(startPoint.x, startPoint.y);
+                    this.handCtx.lineTo(endPoint.x, endPoint.y);
                 });
+                this.handCtx.stroke();
 
-                // Draw landmarks
-                this.handCtx.fillStyle = handColor;
-                landmarks.forEach(([x, y], index) => {
+                // Draw landmarks with enhanced colors
+                landmarks.forEach((landmark, index) => {
+                    const point = this.landmarkToPixel(landmark);
+                    let radius = 3;
+                    let color = handColor;
+                    
+                    if ([4, 8, 12, 16, 20].includes(index)) {
+                        radius = 5;
+                        
+                        if (this.clearGestureFrames > 0) {
+                            color = '#ff4757'; // Red for clear gesture
+                        } else if (index === 8 && isDrawing) {
+                            color = '#00ff88'; // Green for active drawing finger
+                        } else if (index === 8) {
+                            color = '#ffff00'; // Yellow for ready index finger
+                        } else {
+                            color = handColor; // Hand-specific color for other fingertips
+                        }
+                    }
+                    
+                    this.handCtx.fillStyle = color;
                     this.handCtx.beginPath();
-                    this.handCtx.arc(x, y, index === 8 ? 10 : 6, 0, 2 * Math.PI);
+                    this.handCtx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
                     this.handCtx.fill();
                 });
-
-                // Add hand label
-                const centerX = landmarks.reduce((sum, point) => sum + point[0], 0) / landmarks.length;
-                const centerY = landmarks.reduce((sum, point) => sum + point[1], 0) / landmarks.length;
-                
-                this.handCtx.fillStyle = handColor;
-                this.handCtx.font = 'bold 16px JetBrains Mono';
-                this.handCtx.textAlign = 'center';
-                this.handCtx.fillText(handType.toUpperCase(), centerX, centerY - 40);
-                
-                // Reset shadow
-                this.handCtx.shadowBlur = 0;
             }
 
-            recognizeGesture(landmarks) {
+            // Existing methods (unchanged)
+            detectClearGesture(landmarks) {
                 const thumbTip = landmarks[4];
+                const thumbMcp = landmarks[2];
                 const indexTip = landmarks[8];
-                const middleTip = landmarks[12];
-                const ringTip = landmarks[16];
-                const pinkyTip = landmarks[20];
-                
                 const indexMcp = landmarks[5];
+                const middleTip = landmarks[12];
                 const middleMcp = landmarks[9];
+                const ringTip = landmarks[16];
                 const ringMcp = landmarks[13];
+                const pinkyTip = landmarks[20];
                 const pinkyMcp = landmarks[17];
 
-                const indexUp = indexTip[1] < indexMcp[1] - 15;
-                const middleUp = middleTip[1] < middleMcp[1] - 15;
-                const ringUp = ringTip[1] < ringMcp[1] - 15;
-                const pinkyUp = pinkyTip[1] < pinkyMcp[1] - 15;
+                const thumbExtended = thumbTip.y < thumbMcp.y;
+                const indexExtended = indexTip.y < indexMcp.y;
+                const middleExtended = middleTip.y < middleMcp.y;
+                const ringExtended = ringTip.y < ringMcp.y;
+                const pinkyExtended = pinkyTip.y < pinkyMcp.y;
 
-                const thumbIndexDistance = Math.sqrt(
-                    Math.pow(thumbTip[0] - indexTip[0], 2) + 
-                    Math.pow(thumbTip[1] - indexTip[1], 2)
-                );
+                const indexThumbDist = this.calculateDistance(indexTip, thumbTip);
+                const middleIndexDist = this.calculateDistance(middleTip, indexTip);
+                const fingersSpread = indexThumbDist > 0.08 && middleIndexDist > 0.04;
 
-                if (thumbIndexDistance < 25 && !middleUp && !ringUp && !pinkyUp) {
-                    return 'pinch';
-                } else if (indexUp && !middleUp && !ringUp && !pinkyUp) {
-                    return 'pointing';
-                } else if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
-                    return 'fist';
-                } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
-                    return 'peace';
-                } else if (indexUp && middleUp && ringUp && pinkyUp) {
-                    return 'open_palm';
-                }
-
-                return 'unknown';
+                return thumbExtended && indexExtended && middleExtended && ringExtended && pinkyExtended && fingersSpread;
             }
 
-            handleDrawing(landmarks, handType, gesture) {
+            shouldContinueDrawing(landmarks) {
                 const indexTip = landmarks[8];
+                const indexMcp = landmarks[5];
+                const middleTip = landmarks[12];
+                const wrist = landmarks[0];
+
+                const indexExtended = this.calculateDistance(indexTip, wrist) > this.calculateDistance(indexMcp, wrist);
+                const indexAheadOfMiddle = this.calculateDistance(indexTip, wrist) >= this.calculateDistance(middleTip, wrist) * 0.95;
                 
-                // Convert coordinates
-                const scaleX = this.drawingCanvas.width / this.handCanvas.width;
-                const scaleY = this.drawingCanvas.height / this.handCanvas.height;
+                return indexExtended && indexAheadOfMiddle;
+            }
+
+            smoothPosition(positions) {
+                let sumX = 0, sumY = 0;
+                for (let pos of positions) {
+                    sumX += pos.x;
+                    sumY += pos.y;
+                }
+                return {
+                    x: sumX / positions.length,
+                    y: sumY / positions.length
+                };
+            }
+
+            convertToDrawingCoords(landmark) {
+                const x = (1 - landmark.x) * this.drawingCanvas.width;
+                const y = landmark.y * this.drawingCanvas.height;
+                return { x, y };
+            }
+
+            landmarkToPixel(landmark) {
+                return {
+                    x: (1 - landmark.x) * this.handCanvas.width,
+                    y: landmark.y * this.handCanvas.height
+                };
+            }
+
+            calculateDistance(point1, point2) {
+                const dx = point1.x - point2.x;
+                const dy = point1.y - point2.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            clearCanvasWithAnimation() {
+                this.drawCtx.clearRect(0, 0, this.drawingCanvas.width, this.drawingCanvas.height);
+                this.stopDrawingHand(this.leftHand);
+                this.stopDrawingHand(this.rightHand);
                 
-                const canvasX = (this.handCanvas.width - indexTip[0]) * scaleX;
-                const canvasY = indexTip[1] * scaleY;
+                const clearIcon = document.createElement('div');
+                clearIcon.className = 'clear-animation';
+                clearIcon.textContent = '🗑️';
+                document.body.appendChild(clearIcon);
                 
-                if (gesture === 'pointing') {
-                    if (!this.isDrawing) {
-                        this.isDrawing = true;
-                        this.lastX = canvasX;
-                        this.lastY = canvasY;
-                        this.saveDrawingState();
-                        this.drawingCanvas.classList.add('drawing-active');
-                        document.getElementById('drawingStatus').textContent = `DRAWING: ${handType.toUpperCase()}`;
-                    } else {
-                        // Draw line with glow effect
-                        this.drawCtx.strokeStyle = this.currentColor;
-                        this.drawCtx.lineWidth = this.brushSize;
-                        this.drawCtx.globalAlpha = 0.9;
-                        this.drawCtx.shadowColor = this.currentColor;
-                        this.drawCtx.shadowBlur = 5;
-                        
-                        this.drawCtx.beginPath();
-                        this.drawCtx.moveTo(this.lastX, this.lastY);
-                        this.drawCtx.lineTo(canvasX, canvasY);
-                        this.drawCtx.stroke();
-                        
-                        this.drawCtx.globalAlpha = 1.0;
-                        this.drawCtx.shadowBlur = 0;
-                        
-                        this.lastX = canvasX;
-                        this.lastY = canvasY;
-                    }
-                } else {
-                    if (this.isDrawing) {
-                        this.isDrawing = false;
-                        this.drawingCanvas.classList.remove('drawing-active');
-                        document.getElementById('drawingStatus').textContent = 'STANDBY MODE';
-                    }
-                }
-            }
-
-            handleGestures(gesture, handType) {
-                switch (gesture) {
-                    case 'open_palm':
-                        this.clearCanvas();
-                        break;
-                    case 'pinch':
-                        this.cycleColor();
-                        break;
-                    case 'peace':
-                        this.undo();
-                        break;
-                }
-            }
-
-            updateHandStatus(handType, detected, gesture = 'unknown') {
-                const statusElement = document.getElementById(`${handType}HandStatus`);
-                const gestureElement = document.getElementById(`${handType}HandGesture`);
-                const actionElement = document.getElementById(`${handType}HandAction`);
-                
-                if (detected) {
-                    statusElement.classList.add('active');
-                    const gestureEmojis = {
-                        'pointing': '👆',
-                        'fist': '✊',
-                        'peace': '✌️',
-                        'open_palm': '🖐️',
-                        'pinch': '🤏',
-                        'unknown': '❓'
-                    };
-                    
-                    const gestureActions = {
-                        'pointing': 'DRAWING',
-                        'fist': 'STOP',
-                        'peace': 'UNDO',
-                        'open_palm': 'CLEAR',
-                        'pinch': 'COLOR',
-                        'unknown': 'UNKNOWN'
-                    };
-                    
-                    gestureElement.textContent = gestureEmojis[gesture] || '❓';
-                    actionElement.textContent = gestureActions[gesture] || 'UNKNOWN';
-                } else {
-                    statusElement.classList.remove('active');
-                    gestureElement.textContent = '❌';
-                    actionElement.textContent = 'OFFLINE';
-                }
-            }
-
-            selectColor(color) {
-                this.currentColor = color;
-                document.querySelectorAll('.color-option').forEach(option => {
-                    option.classList.remove('active');
-                });
-                document.querySelector(`[data-color="${color}"]`).classList.add('active');
-            }
-
-            cycleColor() {
-                const colors = ['#ffffff', '#14b8a6', '#eab308', '#f97316', '#ec4899', '#06b6d4', '#8b5cf6', '#ef4444'];
-                const currentIndex = colors.indexOf(this.currentColor);
-                const nextIndex = (currentIndex + 1) % colors.length;
-                this.selectColor(colors[nextIndex]);
-            }
-
-            saveDrawingState() {
-                this.drawingHistory.push(this.drawCtx.getImageData(0, 0, this.drawingCanvas.width, this.drawingCanvas.height));
-                if (this.drawingHistory.length > 20) {
-                    this.drawingHistory.shift();
-                }
-            }
-
-            undo() {
-                if (this.drawingHistory.length > 1) {
-                    this.drawingHistory.pop();
-                    const previousState = this.drawingHistory[this.drawingHistory.length - 1];
-                    this.drawCtx.putImageData(previousState, 0, 0);
-                }
-            }
-
-            clearCanvas() {
-                this.drawCtx.fillStyle = '#0d0d0d';
-                this.drawCtx.fillRect(0, 0, this.drawingCanvas.width, this.drawingCanvas.height);
-                this.drawingHistory = [];
-                this.saveDrawingState();
-            }
-
-            saveCanvas() {
-                const dataURL = this.drawingCanvas.toDataURL();
-                localStorage.setItem('airgesture_drawing', dataURL);
-                alert('Drawing saved to browser storage!');
-            }
-
-            downloadCanvas() {
-                const link = document.createElement('a');
-                link.download = `airgesture-pro-${Date.now()}.png`;
-                link.href = this.drawingCanvas.toDataURL();
-                link.click();
-            }
-
-            calibrate() {
-                alert('Neural calibration initiated! Show different hand gestures for 5 seconds.');
                 setTimeout(() => {
-                    alert('Calibration complete! System optimized.');
-                }, 5000);
-            }
-
-            reset() {
-                this.stop();
-                this.clearCanvas();
-                this.selectColor('#ffffff');
-                document.getElementById('sensitivitySlider').value = 0.8;
-                document.getElementById('brushSizeSlider').value = 8;
-                document.getElementById('smoothingSlider').value = 5;
-                this.sensitivity = 0.8;
-                this.brushSize = 8;
-                this.smoothing = 5;
-            }
-
-            updateFPS() {
-                this.frameCount++;
-                const now = Date.now();
+                    document.body.removeChild(clearIcon);
+                }, 1000);
                 
-                if (now - this.lastFrameTime >= 1000) {
-                    const fps = Math.round(this.frameCount * 1000 / (now - this.lastFrameTime));
-                    document.getElementById('fpsCounter').textContent = fps;
-                    
-                    this.frameCount = 0;
-                    this.lastFrameTime = now;
-                }
+                console.log('🗑️ Canvas cleared with dual hand support!');
             }
         }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            window.airGesturePro = new AirGesturePro();
+            new DualHandNeuralCanvas();
         });
     </script>
 </body>
 </html>
+
